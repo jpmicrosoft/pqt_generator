@@ -1,0 +1,718 @@
+{
+  "mcpServers": {
+    "fabric-dataflow-toolkit": {
+      "displayName": "Microsoft Fabric Dataflow Toolkit",
+      "description": "Tools and knowledge for converting Microsoft Fabric Dataflow Gen2 exports to Power Query Template (.pqt) files, analyzing M code dependencies, and managing workspace migrations.",
+      "version": "1.0.0",
+      "author": "Fabric Toolkit Team",
+      "category": "data-transformation",
+      "command": "python",
+      "args": [
+        "-m",
+        "fabric_dataflow_server"
+      ],
+      "tools": [
+        {
+          "name": "decode_fabric_export",
+          "description": "Decode base64-encoded Fabric Dataflow Gen2 export files into readable format. Extracts mashup.pq (M code), queryMetadata.json, and .platform files.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "export_file_path": {
+                "type": "string",
+                "description": "Path to the Fabric export JSON file (WS__*.json format)"
+              },
+              "output_directory": {
+                "type": "string",
+                "description": "Directory to write decoded files (default: create item_XXX subdirectory)"
+              }
+            },
+            "required": ["export_file_path"]
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "description": "Whether decoding succeeded"
+              },
+              "output_dir": {
+                "type": "string",
+                "description": "Path to directory containing decoded files"
+              },
+              "files_created": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "List of files created (mashup.pq, queryMetadata.json, .platform, etc.)"
+              },
+              "errors": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Any errors encountered during decoding"
+              }
+            }
+          }
+        },
+        {
+          "name": "validate_query_metadata",
+          "description": "Validate queryMetadata.json structure, specifically checking for required queriesMetadata object. This is critical for successful .pqt conversion.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "metadata_file_path": {
+                "type": "string",
+                "description": "Path to queryMetadata.json file"
+              }
+            },
+            "required": ["metadata_file_path"]
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "valid": {
+                "type": "boolean",
+                "description": "Whether queryMetadata structure is valid"
+              },
+              "has_queries_metadata": {
+                "type": "boolean",
+                "description": "Whether queriesMetadata object exists"
+              },
+              "query_count": {
+                "type": "integer",
+                "description": "Number of queries found in queriesMetadata"
+              },
+              "query_names": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "List of query names"
+              },
+              "issues": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Validation issues found"
+              }
+            }
+          }
+        },
+        {
+          "name": "analyze_m_code_dependencies",
+          "description": "Analyze Power Query M code to identify workspace-specific dependencies like Lakehouse.Contents(), workspace IDs, connection strings, and external data sources. Used to assess dataflow portability.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "mashup_file_path": {
+                "type": "string",
+                "description": "Path to mashup.pq or MashupDocument.pq file"
+              },
+              "include_analysis": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": ["lakehouse", "workspace_ids", "connections", "external_sources", "all"]
+                },
+                "description": "Types of dependencies to analyze (default: all)"
+              }
+            },
+            "required": ["mashup_file_path"]
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "portable": {
+                "type": "boolean",
+                "description": "Whether M code is portable (no workspace-specific dependencies)"
+              },
+              "lakehouse_calls": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Lakehouse.Contents() calls found"
+              },
+              "workspace_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Workspace/Item GUIDs found in code"
+              },
+              "connection_strings": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Connection string patterns found"
+              },
+              "external_sources": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "External data sources used (Sql.Database, SharePoint, Web.Contents, etc.)"
+              },
+              "portability_score": {
+                "type": "string",
+                "enum": ["portable", "workspace-specific", "connection-dependent"],
+                "description": "Overall portability assessment"
+              }
+            }
+          }
+        },
+        {
+          "name": "create_pqt_file",
+          "description": "Create a Power Query Template (.pqt) file from decoded dataflow components. Generates pqtzip structure, transforms metadata, and creates ZIP archive.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "source_directory": {
+                "type": "string",
+                "description": "Directory containing decoded files (mashup.pq, queryMetadata.json, .platform)"
+              },
+              "output_pqt_path": {
+                "type": "string",
+                "description": "Path for output .pqt file (default: source_dir/item_XXX.pqt)"
+              },
+              "overwrite": {
+                "type": "boolean",
+                "description": "Whether to overwrite existing .pqt file (default: false)"
+              }
+            },
+            "required": ["source_directory"]
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "success": {
+                "type": "boolean",
+                "description": "Whether .pqt creation succeeded"
+              },
+              "pqt_path": {
+                "type": "string",
+                "description": "Path to created .pqt file"
+              },
+              "pqtzip_structure": {
+                "type": "object",
+                "properties": {
+                  "MashupDocument_pq": {
+                    "type": "string",
+                    "description": "Status of MashupDocument.pq"
+                  },
+                  "MashupMetadata_json": {
+                    "type": "string",
+                    "description": "Status of MashupMetadata.json (includes query count)"
+                  },
+                  "Metadata_json": {
+                    "type": "string",
+                    "description": "Status of Metadata.json"
+                  },
+                  "Content_Types_xml": {
+                    "type": "string",
+                    "description": "Status of [Content_Types].xml"
+                  }
+                }
+              },
+              "errors": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Any errors encountered"
+              }
+            }
+          }
+        },
+        {
+          "name": "validate_pqt_file",
+          "description": "Validate .pqt file structure and content. Checks for required files, valid JSON, non-empty QueriesMetadata, and M code presence.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "pqt_file_path": {
+                "type": "string",
+                "description": "Path to .pqt file to validate"
+              },
+              "detailed": {
+                "type": "boolean",
+                "description": "Include detailed analysis (query names, M code length, etc.)"
+              }
+            },
+            "required": ["pqt_file_path"]
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "valid": {
+                "type": "boolean",
+                "description": "Whether .pqt file is valid"
+              },
+              "files_present": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Files found in ZIP"
+              },
+              "missing_files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Required files not found"
+              },
+              "query_count": {
+                "type": "integer",
+                "description": "Number of queries in MashupMetadata.json"
+              },
+              "m_code_length": {
+                "type": "integer",
+                "description": "Character count in MashupDocument.pq"
+              },
+              "issues": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Validation issues found"
+              }
+            }
+          }
+        },
+        {
+          "name": "extract_workspace_metadata",
+          "description": "Extract workspace ID, item ID, item type, and display name from .platform file. Used for tracking source workspaces and migration planning.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "platform_file_path": {
+                "type": "string",
+                "description": "Path to .platform file"
+              }
+            },
+            "required": ["platform_file_path"]
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "workspace_id": {
+                "type": "string",
+                "description": "Workspace GUID"
+              },
+              "item_id": {
+                "type": "string",
+                "description": "Item GUID"
+              },
+              "item_type": {
+                "type": "string",
+                "description": "Item type (typically 'Dataflow')"
+              },
+              "display_name": {
+                "type": "string",
+                "description": "Display name of the dataflow"
+              }
+            }
+          }
+        },
+        {
+          "name": "generate_self_contained_m_code",
+          "description": "Generate self-contained Power Query M code examples with inline data. Useful for creating portable demo dataflows that work in any workspace.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "pattern_type": {
+                "type": "string",
+                "enum": ["inline_table", "date_table", "filtered_data", "custom"],
+                "description": "Type of M code pattern to generate"
+              },
+              "data": {
+                "type": "object",
+                "description": "Data to include (for inline_table pattern). Format: {columns: [...], rows: [[...]]}"
+              },
+              "query_name": {
+                "type": "string",
+                "description": "Name for the generated query (default: SampleData)"
+              },
+              "custom_code": {
+                "type": "string",
+                "description": "Custom M code template (for custom pattern)"
+              }
+            },
+            "required": ["pattern_type"]
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "m_code": {
+                "type": "string",
+                "description": "Generated Power Query M code"
+              },
+              "query_name": {
+                "type": "string",
+                "description": "Name of the query"
+              },
+              "portable": {
+                "type": "boolean",
+                "description": "Whether code is portable (always true for self-contained patterns)"
+              },
+              "description": {
+                "type": "string",
+                "description": "Description of what the code does"
+              }
+            }
+          }
+        },
+        {
+          "name": "batch_process_exports",
+          "description": "Process multiple Fabric export directories in batch. Runs decode and convert operations on all directories, generates consolidated reports.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "root_directory": {
+                "type": "string",
+                "description": "Root directory containing workspace subdirectories"
+              },
+              "output_directory": {
+                "type": "string",
+                "description": "Base directory for output (creates subdirectories per workspace)"
+              },
+              "operations": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": ["decode", "convert", "validate", "all"]
+                },
+                "description": "Operations to perform (default: all)"
+              },
+              "consolidate_mappings": {
+                "type": "boolean",
+                "description": "Generate consolidated item_mapping.txt file (default: true)"
+              }
+            },
+            "required": ["root_directory"]
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "total_workspaces": {
+                "type": "integer",
+                "description": "Number of workspaces processed"
+              },
+              "successful": {
+                "type": "integer",
+                "description": "Number of successful operations"
+              },
+              "failed": {
+                "type": "integer",
+                "description": "Number of failed operations"
+              },
+              "results": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "workspace": {
+                      "type": "string"
+                    },
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "dataflows_processed": {
+                      "type": "integer"
+                    },
+                    "pqt_files_created": {
+                      "type": "integer"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "description": "Detailed results per workspace"
+              },
+              "consolidated_mapping_path": {
+                "type": "string",
+                "description": "Path to consolidated item_mapping.txt file"
+              }
+            }
+          }
+        },
+        {
+          "name": "sanitize_workspace_ids",
+          "description": "Replace real workspace and item IDs with dummy values in files. Used when preparing code/documentation for public sharing.",
+          "inputSchema": {
+            "type": "object",
+            "properties": {
+              "directory": {
+                "type": "string",
+                "description": "Directory to search and sanitize"
+              },
+              "file_extensions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "File extensions to process (default: .md, .json, .txt, .py)"
+              },
+              "id_mapping": {
+                "type": "object",
+                "description": "Custom mapping of real_id: dummy_id (auto-generated if not provided)"
+              },
+              "dry_run": {
+                "type": "boolean",
+                "description": "Preview changes without modifying files (default: false)"
+              }
+            },
+            "required": ["directory"]
+          },
+          "outputSchema": {
+            "type": "object",
+            "properties": {
+              "files_modified": {
+                "type": "integer",
+                "description": "Number of files modified"
+              },
+              "ids_replaced": {
+                "type": "object",
+                "description": "Map of real_id: dummy_id replacements made"
+              },
+              "modified_files": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "List of files that were modified"
+              }
+            }
+          }
+        }
+      ],
+      "resources": [
+        {
+          "name": "fabric_export_structure_guide",
+          "description": "Comprehensive guide to Microsoft Fabric Dataflow Gen2 export file structure, including definition.parts format, base64 encoding, and required components.",
+          "uri": "resource://fabric-dataflow-toolkit/export-structure",
+          "mimeType": "text/markdown"
+        },
+        {
+          "name": "query_metadata_requirements",
+          "description": "Detailed documentation of queryMetadata.json requirements, specifically the queriesMetadata object structure that is critical for .pqt conversion.",
+          "uri": "resource://fabric-dataflow-toolkit/query-metadata",
+          "mimeType": "text/markdown"
+        },
+        {
+          "name": "pqt_file_format",
+          "description": "Power Query Template (.pqt) file format specification, including ZIP structure, required files, and MashupMetadata.json schema.",
+          "uri": "resource://fabric-dataflow-toolkit/pqt-format",
+          "mimeType": "text/markdown"
+        },
+        {
+          "name": "workspace_migration_guide",
+          "description": "Best practices for migrating dataflows between workspaces, handling workspace-specific dependencies, and ensuring successful .pqt imports.",
+          "uri": "resource://fabric-dataflow-toolkit/migration-guide",
+          "mimeType": "text/markdown"
+        },
+        {
+          "name": "m_code_patterns",
+          "description": "Collection of self-contained Power Query M code patterns for creating portable dataflows: inline tables, date tables, filtered data, and more.",
+          "uri": "resource://fabric-dataflow-toolkit/m-code-patterns",
+          "mimeType": "text/markdown"
+        },
+        {
+          "name": "troubleshooting_checklist",
+          "description": "Common issues and solutions for .pqt import failures, toolkit processing errors, and workspace dependency mismatches.",
+          "uri": "resource://fabric-dataflow-toolkit/troubleshooting",
+          "mimeType": "text/markdown"
+        }
+      ],
+      "prompts": [
+        {
+          "name": "analyze_dataflow_export",
+          "description": "Analyze a Fabric dataflow export file to understand its structure, dependencies, and portability",
+          "arguments": [
+            {
+              "name": "export_file_path",
+              "description": "Path to the Fabric export JSON file",
+              "required": true
+            }
+          ]
+        },
+        {
+          "name": "create_portable_dataflow",
+          "description": "Guide through creating a self-contained, portable dataflow with inline data for demos",
+          "arguments": [
+            {
+              "name": "dataflow_name",
+              "description": "Name for the dataflow",
+              "required": true
+            },
+            {
+              "name": "data_type",
+              "description": "Type of data to include (sales, customers, dates, etc.)",
+              "required": false
+            }
+          ]
+        },
+        {
+          "name": "troubleshoot_pqt_import",
+          "description": "Diagnose why a .pqt file import is failing and provide solutions",
+          "arguments": [
+            {
+              "name": "pqt_file_path",
+              "description": "Path to the .pqt file",
+              "required": true
+            },
+            {
+              "name": "error_message",
+              "description": "Error message from import attempt",
+              "required": false
+            }
+          ]
+        },
+        {
+          "name": "plan_workspace_migration",
+          "description": "Create a migration plan for moving dataflows from one workspace to another",
+          "arguments": [
+            {
+              "name": "source_workspace_exports",
+              "description": "Path to directory containing source workspace exports",
+              "required": true
+            },
+            {
+              "name": "target_workspace_id",
+              "description": "Target workspace ID (if known)",
+              "required": false
+            }
+          ]
+        }
+      ],
+      "configuration": {
+        "pythonPath": "python",
+        "toolkitPath": "pqt_generator",
+        "defaultEncoding": "utf-8",
+        "maxConcurrentOperations": 10,
+        "validateOutputs": true,
+        "autoConsolidateMappings": true,
+        "dummyWorkspaceIds": {
+          "workspace1": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+          "workspace2": "ffffffff-gggg-hhhh-iiii-jjjjjjjjjjjj"
+        },
+        "dummyItemIds": {
+          "item1": "11111111-2222-3333-4444-555555555555",
+          "item2": "66666666-7777-8888-9999-aaaaaaaaaaaa"
+        }
+      },
+      "knowledgeBase": {
+        "exportStructure": {
+          "description": "Fabric exports have definition.parts array with 3 objects: mashup.pq (M code), queryMetadata.json (metadata), .platform (workspace info). All payloads are InlineBase64 encoded.",
+          "criticalRequirement": "queryMetadata.json MUST contain a nested 'queriesMetadata' object for .pqt conversion to work. Missing this causes empty QueriesMetadata in generated .pqt files."
+        },
+        "workspaceSpecificity": {
+          "description": "Toolkit creates valid .pqt files from exports. Import failures occur due to workspace/connection mismatches, not toolkit issues.",
+          "portableSolution": "Create dataflows with self-contained M code using Table.FromRows(Json.Document()) pattern. Avoid Lakehouse.Contents() and external connections for portable demos."
+        },
+        "pqtStructure": {
+          "description": ".pqt files are ZIP archives containing 4 files: MashupDocument.pq (M code), MashupMetadata.json (queries array), Metadata.json (name/version), [Content_Types].xml (MIME declarations).",
+          "transformation": "MashupMetadata.json has QueriesMetadata array (not object) with QueryId and QueryName for each query."
+        },
+        "commonIssues": {
+          "emptyQueriesMetadata": "Caused by missing queriesMetadata object in source queryMetadata.json",
+          "importFailureWorkspace": "Caused by workspace ID, Lakehouse ID, or connection string mismatch",
+          "decodingFailure": "Caused by invalid definition.parts structure or corrupted base64",
+          "reZippingMyth": "Re-zipping doesn't break .pqt files - workspace mismatch does"
+        }
+      },      "documentation": {
+        "officialResources": [
+          {
+            "name": "Microsoft Fabric Documentation",
+            "url": "https://learn.microsoft.com/fabric/",
+            "description": "Official Microsoft Fabric documentation covering dataflows, workspaces, and Fabric platform features"
+          },
+          {
+            "name": "Power Query M Language Reference",
+            "url": "https://learn.microsoft.com/powerquery-m/",
+            "description": "Complete Power Query M language reference including functions, operators, and expressions"
+          },
+          {
+            "name": "Power BI REST API Reference",
+            "url": "https://learn.microsoft.com/rest/api/power-bi/",
+            "description": "Power BI REST API documentation for admin operations, datasets, reports, and workspaces"
+          },
+          {
+            "name": "Power BI Admin API Endpoint",
+            "url": "https://api.powerbi.com/v1.0/myorg/admin",
+            "description": "Base endpoint for Power BI Admin REST APIs including Scanner API for metadata extraction"
+          },
+          {
+            "name": "Fabric Scanner API Documentation",
+            "url": "https://learn.microsoft.com/rest/api/power-bi/admin/workspace-info-get-scan-result",
+            "description": "Scanner API documentation for performing tenant-wide workspace and item metadata scans"
+          },
+          {
+            "name": "Fabric Dataflow Definition API",
+            "url": "https://learn.microsoft.com/rest/api/fabric/dataflow/items/get-dataflow-definition",
+            "description": "API for retrieving Fabric dataflow definitions including mashup.pq and metadata"
+          },
+          {
+            "name": "Scanner API Setup Guide",
+            "url": "https://learn.microsoft.com/power-bi/admin/service-admin-metadata-scanning",
+            "description": "Setup guide for enabling and configuring metadata scanning in Power BI Admin Portal"
+          },
+          {
+            "name": "Service Principal Setup",
+            "url": "https://learn.microsoft.com/power-bi/developer/embedded/embed-service-principal",
+            "description": "Guide to configuring service principals for automated Power BI/Fabric API access"
+          },
+          {
+            "name": "Power BI Admin REST API",
+            "url": "https://learn.microsoft.com/rest/api/power-bi/admin",
+            "description": "Complete Power BI Admin REST API reference for tenant administration operations"
+          },
+          {
+            "name": "Git Credential Manager",
+            "url": "https://github.com/git-ecosystem/git-credential-manager",
+            "description": "Secure Git credential storage for authenticating with GitHub repositories"
+          },
+          {
+            "name": "Python zipfile Module",
+            "url": "https://docs.python.org/3/library/zipfile.html",
+            "description": "Python standard library documentation for creating and manipulating ZIP archives"
+          }
+        ],
+        "internalGuides": [
+          {
+            "path": "https://github.com/jpmicrosoft/pqt_generator/blob/main/agent/fabric_dataflow_instructions.md",
+            "description": "Comprehensive instruction file for Fabric dataflow projects"
+          },
+          {
+            "path": "https://github.com/jpmicrosoft/pqt_generator/blob/main/agent/fabric_dataflow_skills.md",
+            "description": "Skill definitions for working with Fabric dataflows"
+          },
+          {
+            "path": "https://github.com/jpmicrosoft/pqt_generator/blob/main/README.md",
+            "description": "Toolkit README with usage examples and workflow documentation"
+          }
+        ]
+      },      "tags": [
+        "microsoft-fabric",
+        "power-query",
+        "dataflow",
+        "pqt",
+        "data-migration",
+        "m-code",
+        "automation",
+        "etl",
+        "data-transformation"
+      ]
+    }
+  }
+}
