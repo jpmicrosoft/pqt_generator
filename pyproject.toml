@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pqt-generator"
+version = "1.0.0"
+description = "Convert Microsoft Fabric Dataflow Gen2 exports to Power Query Template (.pqt) files"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+authors = [{name = "jpmicrosoft"}]
+keywords = ["power-query", "fabric", "dataflows", "pqt", "microsoft"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
+    "Topic :: Utilities",
+]
+
+[project.scripts]
+process-dataflows = "process_dataflows:main"
+batch-decode-dataflows = "batch_decode_dataflows:main"
+create-pqt = "create_pqt_from_workspace:main"
+
+[project.urls]
+Homepage = "https://github.com/jpmicrosoft/pqt_generator"
+Repository = "https://github.com/jpmicrosoft/pqt_generator"
+Issues = "https://github.com/jpmicrosoft/pqt_generator/issues"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]

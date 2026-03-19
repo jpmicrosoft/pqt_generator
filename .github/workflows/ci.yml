@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main, fix/*]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Verify syntax
+        run: |
+          python -m py_compile process_dataflows.py
+          python -m py_compile batch_decode_dataflows.py
+          python -m py_compile create_pqt_from_workspace.py
+          python -m py_compile shared_utils.py
+
+      - name: Run tests
+        run: python -m unittest discover tests/ -v
+
+      - name: Verify CLI help
+        run: python process_dataflows.py --help
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install flake8
+        run: pip install flake8
+
+      - name: Lint
+        run: flake8 . --max-line-length=120 --ignore=E501,W503 --exclude=__pycache__,.git
