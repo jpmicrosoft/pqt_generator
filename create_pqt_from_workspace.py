@@ -17,6 +17,7 @@ Example:
 
 import argparse
 import json
+import logging
 import shutil
 import sys
 import time
@@ -30,6 +31,8 @@ from shared_utils import (
     parse_mapping_line,
     parse_ws_filename,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def find_dataflow_items(workspace_path: Path) -> List[Path]:
@@ -45,7 +48,7 @@ def find_dataflow_items(workspace_path: Path) -> List[Path]:
     dataflow_items = []
 
     if not workspace_path.exists():
-        print(f"Error: Workspace path does not exist: {workspace_path}")
+        logger.error(f"Error: Workspace path does not exist: {workspace_path}")
         return dataflow_items
 
     for item_dir in sorted(workspace_path.iterdir()):
@@ -54,7 +57,7 @@ def find_dataflow_items(workspace_path: Path) -> List[Path]:
             if mashup_file.exists():
                 dataflow_items.append(item_dir)
 
-    print(f"Found {len(dataflow_items)} dataflow items in {workspace_path}")
+    logger.info(f"Found {len(dataflow_items)} dataflow items in {workspace_path}")
     return dataflow_items
 
 
@@ -73,7 +76,7 @@ def read_item_mapping(workspace_path: Path) -> Dict[str, str]:
     mappings: Dict[str, str] = {}
 
     if not mapping_file.exists():
-        print(f"Warning: item_mapping.txt not found at {mapping_file}")
+        logger.warning(f"Warning: item_mapping.txt not found at {mapping_file}")
         return mappings
 
     with open(mapping_file, 'r', encoding='utf-8') as f:
@@ -162,15 +165,21 @@ def create_pqtzip_structure(item_dir: Path) -> bool:
         query_metadata_path = item_dir / "queryMetadata.json"
         if query_metadata_path.exists():
             mashup_metadata = create_mashup_metadata(query_metadata_path)
-            with open(pqtzip_dir / "MashupMetadata.json", 'w', encoding='utf-8') as f:
-                json.dump(mashup_metadata, f, indent=2)
+        else:
+            logger.warning(f"  ⚠️ {item_dir.name}: queryMetadata.json not found, using empty metadata")
+            mashup_metadata = {"Version": PQT_VERSION, "QueriesMetadata": []}
+        with open(pqtzip_dir / "MashupMetadata.json", 'w', encoding='utf-8') as f:
+            json.dump(mashup_metadata, f, indent=2)
 
         # 3. Create Metadata.json from .platform
         platform_path = item_dir / ".platform"
         if platform_path.exists():
             metadata = create_metadata(platform_path)
-            with open(pqtzip_dir / "Metadata.json", 'w', encoding='utf-8') as f:
-                json.dump(metadata, f, indent=2)
+        else:
+            logger.warning(f"  ⚠️ {item_dir.name}: .platform not found, using directory name as display name")
+            metadata = {"Name": item_dir.name, "Description": "", "Version": PQT_VERSION}
+        with open(pqtzip_dir / "Metadata.json", 'w', encoding='utf-8') as f:
+            json.dump(metadata, f, indent=2)
 
         # 4. Create [Content_Types].xml
         with open(pqtzip_dir / "[Content_Types].xml", 'w', encoding='utf-8') as f:
@@ -179,7 +188,7 @@ def create_pqtzip_structure(item_dir: Path) -> bool:
         return True
 
     except Exception as e:
-        print(f"Error creating pqtzip for {item_dir.name}: {e}")
+        logger.error(f"Error creating pqtzip for {item_dir.name}: {e}")
         return False
 
 
@@ -197,7 +206,7 @@ def create_pqt_archive(item_dir: Path) -> bool:
     pqt_file = item_dir / f"{item_dir.name}.pqt"
 
     if not pqtzip_dir.exists():
-        print(f"Error: pqtzip directory does not exist for {item_dir.name}")
+        logger.error(f"Error: pqtzip directory does not exist for {item_dir.name}")
         return False
 
     try:
@@ -209,7 +218,7 @@ def create_pqt_archive(item_dir: Path) -> bool:
         return True
 
     except Exception as e:
-        print(f"Error creating .pqt archive for {item_dir.name}: {e}")
+        logger.error(f"Error creating .pqt archive for {item_dir.name}: {e}")
         return False
 
 
@@ -252,11 +261,11 @@ def create_output_mapping(dataflow_items: List[Path], original_mappings: Dict[st
                     workspace_file = original_mappings.get(item_id, "Unknown")
                     f.write(f"{item_id} -> {workspace_file}\n")
 
-        print(f"\nCreated item_mapping.txt with {len(dataflow_items)} entries at {mapping_file}")
+        logger.info(f"\nCreated item_mapping.txt with {len(dataflow_items)} entries at {mapping_file}")
         return True
 
     except Exception as e:
-        print(f"Error creating item_mapping.txt: {e}")
+        logger.error(f"Error creating item_mapping.txt: {e}")
         return False
 
 
@@ -276,7 +285,7 @@ def copy_dataflow_items(dataflow_items: List[Path], output_path: Path) -> List[P
 
     # If output path is the same as source, don't copy - work in place
     if output_path == dataflow_items[0].parent:
-        print(f"Working in place (source directory)")
+        logger.info(f"Working in place (source directory)")
         return dataflow_items
 
     # Otherwise, copy to the new location
@@ -310,7 +319,7 @@ def process_workspace(source_workspace: str, output_directory: str = None) -> bo
     workspace_path = Path(source_workspace).resolve()
 
     if not workspace_path.exists():
-        print(f"Error: Workspace path does not exist: {workspace_path}")
+        logger.error(f"Error: Workspace path does not exist: {workspace_path}")
         return False
 
     # Determine output directory
@@ -320,15 +329,15 @@ def process_workspace(source_workspace: str, output_directory: str = None) -> bo
         # Default: use the same source workspace directory
         output_path = workspace_path
 
-    print(f"\n{'='*70}")
-    print(f"Processing workspace: {workspace_path}")
-    print(f"Output directory: {output_path}")
-    print(f"{'='*70}\n")
+    logger.info(f"\n{'='*70}")
+    logger.info(f"Processing workspace: {workspace_path}")
+    logger.info(f"Output directory: {output_path}")
+    logger.info(f"{'='*70}\n")
 
     # Step 1: Find dataflow items
     dataflow_items = find_dataflow_items(workspace_path)
     if not dataflow_items:
-        print("No dataflow items found. Exiting.")
+        logger.info("No dataflow items found. Exiting.")
         return False
 
     # Step 2: Read original item mappings
@@ -336,32 +345,32 @@ def process_workspace(source_workspace: str, output_directory: str = None) -> bo
 
     # Step 3: Copy dataflow items to output directory
     if output_path != workspace_path:
-        print(f"\nCopying {len(dataflow_items)} dataflow items to {output_path}...")
+        logger.info(f"\nCopying {len(dataflow_items)} dataflow items to {output_path}...")
     copied_items = copy_dataflow_items(dataflow_items, output_path)
 
     # Step 4: Create pqtzip structures
-    print(f"\nCreating pqtzip structures...")
+    logger.info(f"\nCreating pqtzip structures...")
     success_count = 0
     for item_dir in copied_items:
         if create_pqtzip_structure(item_dir):
             success_count += 1
-            print(f"  ✓ {item_dir.name}")
+            logger.info(f"  ✓ {item_dir.name}")
         else:
-            print(f"  ✗ {item_dir.name} - Failed")
+            logger.error(f"  ✗ {item_dir.name} - Failed")
 
-    print(f"\nSuccessfully created {success_count}/{len(copied_items)} pqtzip structures")
+    logger.info(f"\nSuccessfully created {success_count}/{len(copied_items)} pqtzip structures")
 
     # Step 5: Create .pqt archive files
-    print(f"\nCreating .pqt archive files...")
+    logger.info(f"\nCreating .pqt archive files...")
     pqt_success_count = 0
     for item_dir in copied_items:
         if create_pqt_archive(item_dir):
             pqt_success_count += 1
-            print(f"  ✓ {item_dir.name}.pqt")
+            logger.info(f"  ✓ {item_dir.name}.pqt")
         else:
-            print(f"  ✗ {item_dir.name}.pqt - Failed")
+            logger.error(f"  ✗ {item_dir.name}.pqt - Failed")
 
-    print(f"\nSuccessfully created {pqt_success_count}/{len(copied_items)} .pqt files")
+    logger.info(f"\nSuccessfully created {pqt_success_count}/{len(copied_items)} .pqt files")
 
     # Step 6: Move items with .pqt files to with_dataflows directory
     with_dataflows_path = output_path / "with_dataflows"
@@ -369,7 +378,7 @@ def process_workspace(source_workspace: str, output_directory: str = None) -> bo
 
     moved_items = []
     failed_moves = []
-    print(f"\nMoving items with .pqt files to with_dataflows...")
+    logger.info(f"\nMoving items with .pqt files to with_dataflows...")
 
     for item_dir in copied_items:
         pqt_file = item_dir / f"{item_dir.name}.pqt"
@@ -389,7 +398,7 @@ def process_workspace(source_workspace: str, output_directory: str = None) -> bo
                     # Move the entire directory
                     shutil.move(str(item_dir), str(dest_dir))
                     moved_items.append(dest_dir)
-                    print(f"  ✓ Moved {item_dir.name} to with_dataflows/")
+                    logger.info(f"  ✓ Moved {item_dir.name} to with_dataflows/")
                     break
 
                 except PermissionError as e:
@@ -399,18 +408,18 @@ def process_workspace(source_workspace: str, output_directory: str = None) -> bo
                         retry_delay *= 2  # Exponential backoff
                     else:
                         # Final attempt failed, log and continue
-                        print(f"  ✗ Failed to move {item_dir.name}: {e}")
+                        logger.error(f"  ✗ Failed to move {item_dir.name}: {e}")
                         failed_moves.append(item_dir.name)
                         break
                 except Exception as e:
-                    print(f"  ✗ Error moving {item_dir.name}: {e}")
+                    logger.error(f"  ✗ Error moving {item_dir.name}: {e}")
                     failed_moves.append(item_dir.name)
                     break
 
-    print(f"\nSuccessfully moved {len(moved_items)}/{pqt_success_count} items to with_dataflows/")
+    logger.info(f"\nSuccessfully moved {len(moved_items)}/{pqt_success_count} items to with_dataflows/")
     if failed_moves:
-        print(f"Failed to move {len(failed_moves)} items: {', '.join(failed_moves)}")
-        print(f"These items remain in the main output directory.")
+        logger.error(f"Failed to move {len(failed_moves)} items: {', '.join(failed_moves)}")
+        logger.info(f"These items remain in the main output directory.")
 
     # Step 7: Create item_mapping.txt in with_dataflows directory
     if moved_items:
@@ -419,23 +428,23 @@ def process_workspace(source_workspace: str, output_directory: str = None) -> bo
     # Step 8: Create item_mapping.txt in main output directory for remaining items
     remaining_items = [item for item in copied_items if (output_path / item.name).exists()]
     if remaining_items:
-        print(f"\nCreating item_mapping.txt for {len(remaining_items)} items in main directory...")
+        logger.info(f"\nCreating item_mapping.txt for {len(remaining_items)} items in main directory...")
         create_output_mapping(remaining_items, original_mappings, output_path)
 
     # Final summary
-    print(f"\n{'='*70}")
-    print(f"PROCESSING COMPLETE")
-    print(f"{'='*70}")
-    print(f"Total items processed: {len(copied_items)}")
-    print(f"Items with dataflows (.pq files): {len(dataflow_items)}")
-    print(f"  - pqtzip structures created: {success_count}")
-    print(f"  - .pqt archives created: {pqt_success_count}")
-    print(f"  - Moved to with_dataflows/: {len(moved_items)}")
-    print(f"Items remaining in source directory: {len(remaining_items)}")
-    print(f"\nOutput location: {output_path}")
+    logger.info(f"\n{'='*70}")
+    logger.info(f"PROCESSING COMPLETE")
+    logger.info(f"{'='*70}")
+    logger.info(f"Total items processed: {len(copied_items)}")
+    logger.info(f"Items with dataflows (.pq files): {len(dataflow_items)}")
+    logger.info(f"  - pqtzip structures created: {success_count}")
+    logger.info(f"  - .pqt archives created: {pqt_success_count}")
+    logger.info(f"  - Moved to with_dataflows/: {len(moved_items)}")
+    logger.info(f"Items remaining in source directory: {len(remaining_items)}")
+    logger.info(f"\nOutput location: {output_path}")
     if moved_items:
-        print(f"Dataflows location: {with_dataflows_path}")
-    print(f"{'='*70}\n")
+        logger.info(f"Dataflows location: {with_dataflows_path}")
+    logger.info(f"{'='*70}\n")
 
     return success_count > 0 and pqt_success_count > 0
 
@@ -465,6 +474,10 @@ Examples:
     )
 
     args = parser.parse_args()
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(message)s'
+    )
     success = process_workspace(args.source_workspace, args.output_directory)
     sys.exit(0 if success else 1)
 
