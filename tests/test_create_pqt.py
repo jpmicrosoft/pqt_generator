@@ -16,6 +16,7 @@ from create_pqt_from_workspace import (  # noqa: E402
     find_dataflow_items,
     read_item_mapping,
     copy_dataflow_items,
+    process_workspace,
 )
 from shared_utils import PQT_VERSION  # noqa: E402
 
@@ -194,6 +195,66 @@ class TestCopyDataflowItems(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             result = copy_dataflow_items([], Path(tmpdir))
             self.assertEqual(result, [])
+
+
+class TestPqtzipCleanup(unittest.TestCase):
+    """Tests that pqtzip temporary directories are cleaned up on success and failure."""
+
+    def _create_workspace(self, tmpdir):
+        """Create a minimal workspace with one dataflow item."""
+        ws = Path(tmpdir) / "workspace"
+        ws.mkdir()
+        item = ws / "item_001"
+        item.mkdir()
+        (item / "mashup.pq").write_text("let Source = 1 in Source", encoding='utf-8')
+        (item / "queryMetadata.json").write_text(
+            json.dumps({"queriesMetadata": {"Q1": {"isHidden": False}}}),
+            encoding='utf-8'
+        )
+        (item / ".platform").write_text(
+            json.dumps({"config": {"displayName": "TestFlow"}}),
+            encoding='utf-8'
+        )
+        # Create item_mapping.txt
+        (ws / "item_mapping.txt").write_text(
+            "item_001 -> test.json\n", encoding='utf-8'
+        )
+        return ws
+
+    def test_pqtzip_cleaned_up_on_success(self):
+        """Verify pqtzip directory is removed after successful processing."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ws = self._create_workspace(tmpdir)
+            output = Path(tmpdir) / "output"
+            process_workspace(str(ws), str(output))
+
+            # pqtzip should not exist in any item directory under output
+            for item_dir in output.rglob("pqtzip"):
+                self.fail(f"Orphaned pqtzip directory found: {item_dir}")
+
+    def test_pqtzip_cleaned_up_on_archive_failure(self):
+        """Verify pqtzip directory is removed even when archive creation fails."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ws = self._create_workspace(tmpdir)
+            output = Path(tmpdir) / "output"
+
+            # Monkey-patch create_pqt_archive to simulate failure
+            import create_pqt_from_workspace as mod
+            original = mod.create_pqt_archive
+
+            def failing_archive(item_dir):
+                raise RuntimeError("Simulated archive failure")
+
+            mod.create_pqt_archive = failing_archive
+            try:
+                with self.assertRaises(RuntimeError):
+                    process_workspace(str(ws), str(output))
+            finally:
+                mod.create_pqt_archive = original
+
+            # pqtzip should still be cleaned up despite the failure
+            for item_dir in output.rglob("pqtzip"):
+                self.fail(f"Orphaned pqtzip directory found after failure: {item_dir}")
 
 
 if __name__ == '__main__':

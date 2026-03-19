@@ -348,29 +348,36 @@ def process_workspace(source_workspace: str, output_directory: str = None) -> bo
         logger.info(f"\nCopying {len(dataflow_items)} dataflow items to {output_path}...")
     copied_items = copy_dataflow_items(dataflow_items, output_path)
 
-    # Step 4: Create pqtzip structures
-    logger.info("\nCreating pqtzip structures...")
-    success_count = 0
-    for item_dir in copied_items:
-        if create_pqtzip_structure(item_dir):
-            success_count += 1
-            logger.info(f"  ✓ {item_dir.name}")
-        else:
-            logger.error(f"  ✗ {item_dir.name} - Failed")
+    # Step 4: Create pqtzip structures and Step 5: Create .pqt archive files
+    # Wrapped in try/finally to ensure temporary pqtzip directories are always cleaned up
+    try:
+        logger.info("\nCreating pqtzip structures...")
+        success_count = 0
+        for item_dir in copied_items:
+            if create_pqtzip_structure(item_dir):
+                success_count += 1
+                logger.info(f"  ✓ {item_dir.name}")
+            else:
+                logger.error(f"  ✗ {item_dir.name} - Failed")
 
-    logger.info(f"\nSuccessfully created {success_count}/{len(copied_items)} pqtzip structures")
+        logger.info(f"\nSuccessfully created {success_count}/{len(copied_items)} pqtzip structures")
 
-    # Step 5: Create .pqt archive files
-    logger.info("\nCreating .pqt archive files...")
-    pqt_success_count = 0
-    for item_dir in copied_items:
-        if create_pqt_archive(item_dir):
-            pqt_success_count += 1
-            logger.info(f"  ✓ {item_dir.name}.pqt")
-        else:
-            logger.error(f"  ✗ {item_dir.name}.pqt - Failed")
+        logger.info("\nCreating .pqt archive files...")
+        pqt_success_count = 0
+        for item_dir in copied_items:
+            if create_pqt_archive(item_dir):
+                pqt_success_count += 1
+                logger.info(f"  ✓ {item_dir.name}.pqt")
+            else:
+                logger.error(f"  ✗ {item_dir.name}.pqt - Failed")
 
-    logger.info(f"\nSuccessfully created {pqt_success_count}/{len(copied_items)} .pqt files")
+        logger.info(f"\nSuccessfully created {pqt_success_count}/{len(copied_items)} .pqt files")
+    finally:
+        # Clean up temporary pqtzip directories if they still exist
+        for item_dir in copied_items:
+            pqtzip_path = item_dir / "pqtzip"
+            if pqtzip_path.exists():
+                shutil.rmtree(pqtzip_path, ignore_errors=True)
 
     # Step 6: Move items with .pqt files to with_dataflows directory
     with_dataflows_path = output_path / "with_dataflows"

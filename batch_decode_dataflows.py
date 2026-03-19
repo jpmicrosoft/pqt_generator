@@ -17,6 +17,7 @@ import json
 import logging
 import shutil
 import sys
+import unicodedata
 from pathlib import Path
 from typing import List
 
@@ -26,6 +27,12 @@ logger = logging.getLogger(__name__)
 
 # Maximum payload size to decode (100MB)
 MAX_PAYLOAD_SIZE = 100 * 1024 * 1024
+
+# Maximum input file size (500MB)
+MAX_INPUT_FILE_SIZE = 500 * 1024 * 1024
+
+# Maximum number of parts in a definition
+MAX_PARTS = 10_000
 
 
 def decode_dataflow_definition(input_file: Path, output_dir: Path) -> bool:
@@ -39,6 +46,12 @@ def decode_dataflow_definition(input_file: Path, output_dir: Path) -> bool:
     Returns:
         True if decoding succeeded, False otherwise
     """
+    # Check input file size
+    input_size = input_file.stat().st_size
+    if input_size > MAX_INPUT_FILE_SIZE:
+        logger.warning(f"   ⚠️ Skipping {input_file.name}: file size ({input_size:,} bytes) exceeds {MAX_INPUT_FILE_SIZE:,} byte limit")
+        return False
+
     # Read the encoded file
     with open(input_file, 'r', encoding='utf-8') as f:
         definition = json.load(f)
@@ -50,7 +63,12 @@ def decode_dataflow_definition(input_file: Path, output_dir: Path) -> bool:
     resolved_output_dir = output_dir.resolve()
 
     # Decode each part
-    for part in definition.get('definition', {}).get('parts', []):
+    parts = definition.get('definition', {}).get('parts', [])
+    if len(parts) > MAX_PARTS:
+        logger.warning(f"   ⚠️ Skipping {input_file.name}: {len(parts):,} parts exceeds {MAX_PARTS:,} limit")
+        return False
+
+    for part in parts:
         path = part.get('path')
         payload = part.get('payload')
         payload_type = part.get('payloadType')
@@ -65,6 +83,11 @@ def decode_dataflow_definition(input_file: Path, output_dir: Path) -> bool:
 
         # Sanitize path: strip directory components to prevent path traversal
         path = Path(path).name
+
+        # Block Unicode control characters (RTL override, etc.)
+        if any(unicodedata.category(c).startswith('C') for c in path):
+            logger.warning(f"   ⚠️ Skipping part with suspicious Unicode characters in path: {repr(path)}")
+            continue
 
         if payload_type == 'InlineBase64' and payload:
             # Check payload size before decoding
@@ -108,7 +131,7 @@ def decode_dataflow_definition(input_file: Path, output_dir: Path) -> bool:
                     'payloadType': new_payload_type
                 })
 
-            except Exception as e:
+            except (ValueError, json.JSONDecodeError, UnicodeDecodeError, OSError) as e:
                 logger.error(f"   ❌ Error decoding {path}: {e}")
                 decoded_parts.append(part)
         else:
@@ -200,7 +223,7 @@ def batch_decode_directory(source_dir: str) -> bool:
             logger.info("   ✅ Original file moved to subdirectory\n")
             success_count += 1
 
-        except Exception as e:
+        except (ValueError, json.JSONDecodeError, UnicodeDecodeError, OSError, RuntimeError) as e:
             logger.error(f"   ❌ Error: {e}\n")
             error_count += 1
 
