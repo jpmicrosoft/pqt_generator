@@ -545,4 +545,4 @@ The tools use short numbered directory names (`item_001`, `item_002`) to avoid W
 
 ## License
 
-This tool is provided as-is for internal use with Microsoft Fabric and Power Query workflows.
+Licensed under the [MIT License](LICENSE). See LICENSE file for details.
