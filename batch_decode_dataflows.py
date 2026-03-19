@@ -35,13 +35,30 @@ def decode_dataflow_definition(input_file, output_dir):
     
     decoded_parts = []
     
+    MAX_PAYLOAD_SIZE = 100 * 1024 * 1024  # 100MB limit
+
     # Decode each part
     for part in definition.get('definition', {}).get('parts', []):
         path = part.get('path')
         payload = part.get('payload')
         payload_type = part.get('payloadType')
         
+        # Guard against None/empty path values
+        if not path:
+            print(f"   ⚠️ Skipping part with missing or empty path")
+            decoded_parts.append(part)
+            continue
+        
+        # Sanitize path: strip directory components to prevent path traversal
+        path = os.path.basename(path)
+        
         if payload_type == 'InlineBase64' and payload:
+            # Check payload size before decoding
+            if len(payload) > MAX_PAYLOAD_SIZE:
+                print(f"   ⚠️ Skipping {path}: payload exceeds {MAX_PAYLOAD_SIZE // (1024*1024)}MB limit")
+                decoded_parts.append(part)
+                continue
+
             try:
                 # Decode base64
                 decoded_bytes = base64.b64decode(payload)
@@ -54,6 +71,13 @@ def decode_dataflow_definition(input_file, output_dir):
                     
                     # Save as formatted JSON file
                     output_file = os.path.join(output_dir, path)
+                    # Verify output path stays within output_dir
+                    if not os.path.realpath(output_file).startswith(os.path.realpath(output_dir)):
+                        print(f"   ⚠️ Skipping {path}: resolved path escapes output directory")
+                        decoded_parts.append(part)
+                        continue
+                    if os.path.dirname(output_file):
+                        os.makedirs(os.path.dirname(output_file), exist_ok=True)
                     with open(output_file, 'w', encoding='utf-8') as f:
                         json.dump(decoded_payload, f, indent=2, ensure_ascii=False)
                     
@@ -64,6 +88,13 @@ def decode_dataflow_definition(input_file, output_dir):
                     
                     # Save as text file
                     output_file = os.path.join(output_dir, path)
+                    # Verify output path stays within output_dir
+                    if not os.path.realpath(output_file).startswith(os.path.realpath(output_dir)):
+                        print(f"   ⚠️ Skipping {path}: resolved path escapes output directory")
+                        decoded_parts.append(part)
+                        continue
+                    if os.path.dirname(output_file):
+                        os.makedirs(os.path.dirname(output_file), exist_ok=True)
                     with open(output_file, 'w', encoding='utf-8') as f:
                         f.write(decoded_text)
                 
