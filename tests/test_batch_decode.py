@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from batch_decode_dataflows import decode_dataflow_definition, batch_decode_directory
+from batch_decode_dataflows import decode_dataflow_definition, batch_decode_directory  # noqa: E402
 
 
 class TestDecodeDataflowDefinition(unittest.TestCase):

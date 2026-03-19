@@ -69,7 +69,7 @@ def decode_dataflow_definition(input_file: Path, output_dir: Path) -> bool:
         if payload_type == 'InlineBase64' and payload:
             # Check payload size before decoding
             if len(payload) > MAX_PAYLOAD_SIZE:
-                logger.warning(f"   ⚠️ Skipping {path}: payload exceeds {MAX_PAYLOAD_SIZE // (1024*1024)}MB limit")
+                logger.warning(f"   ⚠️ Skipping {path}: payload exceeds {MAX_PAYLOAD_SIZE // (1024 * 1024)}MB limit")
                 decoded_parts.append(part)
                 continue
 
@@ -157,9 +157,9 @@ def batch_decode_directory(source_dir: str) -> bool:
     # Get all JSON files (sorted for deterministic numbering)
     json_files = sorted(source_path.glob("*.json"))
 
-    logger.info(f"\n{'='*70}")
+    logger.info(f"\n{'=' * 70}")
     logger.info("BATCH DECODING DATAFLOW DEFINITIONS")
-    logger.info(f"{'='*70}")
+    logger.info(f"{'=' * 70}")
     logger.info(f"Source Directory: {source_dir}")
     logger.info(f"Found {len(json_files)} JSON files\n")
 
@@ -197,7 +197,7 @@ def batch_decode_directory(source_dir: str) -> bool:
                 logger.warning(f"   ⚠️ Backup not verified, keeping original: {json_file.name}")
 
             logger.info(f"   ✅ Decoded to: {output_dir}")
-            logger.info(f"   ✅ Original file moved to subdirectory\n")
+            logger.info("   ✅ Original file moved to subdirectory\n")
             success_count += 1
 
         except Exception as e:
@@ -210,13 +210,13 @@ def batch_decode_directory(source_dir: str) -> bool:
         with open(mapping_file, 'w', encoding='utf-8') as f:
             f.writelines(mapping_lines)
 
-    logger.info(f"\n{'='*70}")
+    logger.info(f"\n{'=' * 70}")
     logger.info("BATCH DECODE COMPLETE")
-    logger.info(f"{'='*70}")
+    logger.info(f"{'=' * 70}")
     logger.info(f"✅ Successful: {success_count}")
     logger.info(f"❌ Failed: {error_count}")
-    logger.info(f"\n💡 See 'item_mapping.txt' for file-to-folder mapping")
-    logger.info(f"{'='*70}\n")
+    logger.info("\n💡 See 'item_mapping.txt' for file-to-folder mapping")
+    logger.info(f"{'=' * 70}\n")
 
     return success_count > 0
 

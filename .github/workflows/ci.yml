@@ -31,7 +31,7 @@ jobs:
           python -m py_compile shared_utils.py
 
       - name: Run tests
-        run: python -m pytest tests/ -v --tb=short
+        run: python -m unittest discover tests/ -v
 
       - name: Verify CLI help
         run: python process_dataflows.py --help
@@ -50,4 +50,4 @@ jobs:
         run: pip install flake8
 
       - name: Lint
-        run: flake8 *.py --max-line-length=120 --ignore=E501,W503
+        run: flake8 . --max-line-length=120 --ignore=E501,W503 --exclude=__pycache__,.git

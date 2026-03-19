@@ -16,19 +16,19 @@ CONTENT_TYPES_XML = '''<?xml version="1.0" encoding="utf-8"?>
 def parse_ws_filename(filename: str) -> Optional[Dict[str, str]]:
     """
     Parse a Fabric workspace export filename into metadata components.
-    
+
     Expected format: WS__<workspace-id>__<item-id>__<name>__<type>.json
     Handles display names containing '__' by treating the last segment as the type.
-    
+
     Args:
         filename: Name of the file to parse
-        
+
     Returns:
         Dictionary with workspace_id, item_id, name, type keys, or None if parsing fails
     """
     stem = Path(filename).stem
     parts = stem.split('__')
-    
+
     if len(parts) >= 5 and parts[0] == 'WS':
         return {
             'workspace_id': parts[1],
@@ -42,17 +42,17 @@ def parse_ws_filename(filename: str) -> Optional[Dict[str, str]]:
 def parse_mapping_line(line: str) -> Optional[Dict[str, str]]:
     """
     Parse a line from item_mapping.txt, supporting both pipe and arrow formats.
-    
+
     Pipe format: item_001 | WorkspaceID: xxx | ItemID: xxx | Name: xxx | Type: xxx | File: xxx
     Arrow format: item_001 -> filename.json
-    
+
     Returns:
         Dictionary with item_id and available metadata, or None if parsing fails
     """
     line = line.strip()
     if not line:
         return None
-    
+
     if ' | ' in line:
         segments = line.split(' | ')
         result = {'item_id': segments[0].strip()}
@@ -74,12 +74,12 @@ def parse_mapping_line(line: str) -> Optional[Dict[str, str]]:
 def format_mapping_line(item_id: str, metadata: Optional[Dict[str, str]], filename: str) -> str:
     """
     Format a mapping line for item_mapping.txt in pipe-delimited format.
-    
+
     Args:
         item_id: Directory name (e.g., 'item_001')
         metadata: Parsed metadata dict or None
         filename: Original filename
-        
+
     Returns:
         Formatted mapping line string
     """

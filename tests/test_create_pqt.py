@@ -8,7 +8,7 @@ import zipfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from create_pqt_from_workspace import (
+from create_pqt_from_workspace import (  # noqa: E402
     create_mashup_metadata,
     create_metadata,
     create_pqt_archive,
@@ -17,7 +17,7 @@ from create_pqt_from_workspace import (
     read_item_mapping,
     copy_dataflow_items,
 )
-from shared_utils import PQT_VERSION
+from shared_utils import PQT_VERSION  # noqa: E402
 
 
 class TestCreateMashupMetadata(unittest.TestCase):

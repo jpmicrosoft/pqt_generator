@@ -5,7 +5,7 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from shared_utils import parse_ws_filename, parse_mapping_line, format_mapping_line, PQT_VERSION, CONTENT_TYPES_XML
+from shared_utils import parse_ws_filename, parse_mapping_line, format_mapping_line, PQT_VERSION, CONTENT_TYPES_XML  # noqa: E402
 
 
 class TestParseWsFilename(unittest.TestCase):

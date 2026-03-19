@@ -285,7 +285,7 @@ def copy_dataflow_items(dataflow_items: List[Path], output_path: Path) -> List[P
 
     # If output path is the same as source, don't copy - work in place
     if output_path == dataflow_items[0].parent:
-        logger.info(f"Working in place (source directory)")
+        logger.info("Working in place (source directory)")
         return dataflow_items
 
     # Otherwise, copy to the new location
@@ -329,10 +329,10 @@ def process_workspace(source_workspace: str, output_directory: str = None) -> bo
         # Default: use the same source workspace directory
         output_path = workspace_path
 
-    logger.info(f"\n{'='*70}")
+    logger.info(f"\n{'=' * 70}")
     logger.info(f"Processing workspace: {workspace_path}")
     logger.info(f"Output directory: {output_path}")
-    logger.info(f"{'='*70}\n")
+    logger.info(f"{'=' * 70}\n")
 
     # Step 1: Find dataflow items
     dataflow_items = find_dataflow_items(workspace_path)
@@ -349,7 +349,7 @@ def process_workspace(source_workspace: str, output_directory: str = None) -> bo
     copied_items = copy_dataflow_items(dataflow_items, output_path)
 
     # Step 4: Create pqtzip structures
-    logger.info(f"\nCreating pqtzip structures...")
+    logger.info("\nCreating pqtzip structures...")
     success_count = 0
     for item_dir in copied_items:
         if create_pqtzip_structure(item_dir):
@@ -361,7 +361,7 @@ def process_workspace(source_workspace: str, output_directory: str = None) -> bo
     logger.info(f"\nSuccessfully created {success_count}/{len(copied_items)} pqtzip structures")
 
     # Step 5: Create .pqt archive files
-    logger.info(f"\nCreating .pqt archive files...")
+    logger.info("\nCreating .pqt archive files...")
     pqt_success_count = 0
     for item_dir in copied_items:
         if create_pqt_archive(item_dir):
@@ -378,7 +378,7 @@ def process_workspace(source_workspace: str, output_directory: str = None) -> bo
 
     moved_items = []
     failed_moves = []
-    logger.info(f"\nMoving items with .pqt files to with_dataflows...")
+    logger.info("\nMoving items with .pqt files to with_dataflows...")
 
     for item_dir in copied_items:
         pqt_file = item_dir / f"{item_dir.name}.pqt"
@@ -419,7 +419,7 @@ def process_workspace(source_workspace: str, output_directory: str = None) -> bo
     logger.info(f"\nSuccessfully moved {len(moved_items)}/{pqt_success_count} items to with_dataflows/")
     if failed_moves:
         logger.error(f"Failed to move {len(failed_moves)} items: {', '.join(failed_moves)}")
-        logger.info(f"These items remain in the main output directory.")
+        logger.info("These items remain in the main output directory.")
 
     # Step 7: Create item_mapping.txt in with_dataflows directory
     if moved_items:
@@ -432,9 +432,9 @@ def process_workspace(source_workspace: str, output_directory: str = None) -> bo
         create_output_mapping(remaining_items, original_mappings, output_path)
 
     # Final summary
-    logger.info(f"\n{'='*70}")
-    logger.info(f"PROCESSING COMPLETE")
-    logger.info(f"{'='*70}")
+    logger.info(f"\n{'=' * 70}")
+    logger.info("PROCESSING COMPLETE")
+    logger.info(f"{'=' * 70}")
     logger.info(f"Total items processed: {len(copied_items)}")
     logger.info(f"Items with dataflows (.pq files): {len(dataflow_items)}")
     logger.info(f"  - pqtzip structures created: {success_count}")
@@ -444,7 +444,7 @@ def process_workspace(source_workspace: str, output_directory: str = None) -> bo
     logger.info(f"\nOutput location: {output_path}")
     if moved_items:
         logger.info(f"Dataflows location: {with_dataflows_path}")
-    logger.info(f"{'='*70}\n")
+    logger.info(f"{'=' * 70}\n")
 
     return success_count > 0 and pqt_success_count > 0
 
