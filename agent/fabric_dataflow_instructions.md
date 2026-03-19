@@ -96,12 +96,9 @@ A .pqt file is a ZIP archive containing:
 **MashupMetadata.json Structure:**
 ```json
 {
-  "QueryGroups": [],
+  "Version": "1.0.0.0",
   "QueriesMetadata": [
-    {
-      "QueryId": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-      "QueryName": "QueryName1"
-    }
+    {"Name": "QueryName1", "IsHidden": false}
   ]
 }
 ```

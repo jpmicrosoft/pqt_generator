@@ -4,6 +4,7 @@
       "displayName": "Microsoft Fabric Dataflow Toolkit",
       "description": "Tools and knowledge for converting Microsoft Fabric Dataflow Gen2 exports to Power Query Template (.pqt) files, analyzing M code dependencies, and managing workspace migrations.",
       "version": "1.0.0",
+      "status": "design-specification — the fabric_dataflow_server module is not yet implemented. Tools are available via CLI scripts only.",
       "author": "Fabric Toolkit Team",
       "category": "data-transformation",
       "command": "python",
@@ -621,8 +622,8 @@
           "portableSolution": "Create dataflows with self-contained M code using Table.FromRows(Json.Document()) pattern. Avoid Lakehouse.Contents() and external connections for portable demos."
         },
         "pqtStructure": {
-          "description": ".pqt files are ZIP archives containing 4 files: MashupDocument.pq (M code), MashupMetadata.json (queries array), Metadata.json (name/version), [Content_Types].xml (MIME declarations).",
-          "transformation": "MashupMetadata.json has QueriesMetadata array (not object) with QueryId and QueryName for each query."
+          "description": ".pqt files are ZIP archives containing 4 files: MashupDocument.pq (M code), MashupMetadata.json (queries array), Metadata.json (name/description/version), [Content_Types].xml (MIME declarations).",
+          "transformation": "MashupMetadata.json has Version field and QueriesMetadata array (not object) with Name and IsHidden for each query."
         },
         "commonIssues": {
           "emptyQueriesMetadata": "Caused by missing queriesMetadata object in source queryMetadata.json",

@@ -126,7 +126,7 @@ This directory contains configuration files for AI agents working with Microsoft
 **How to Use:**
 
 **For AI Agent Configuration:**
-```json
+```jsonc
 {
   "mcpServers": {
     "fabric-dataflow-toolkit": {
@@ -138,7 +138,7 @@ This directory contains configuration files for AI agents working with Microsoft
 ```
 
 **For Tool Invocation:**
-```json
+```jsonc
 // Example: Decode a Fabric export
 {
   "tool": "decode_fabric_export",
@@ -150,7 +150,7 @@ This directory contains configuration files for AI agents working with Microsoft
 ```
 
 **For Prompt Usage:**
-```json
+```jsonc
 // Example: Analyze dataflow export
 {
   "prompt": "analyze_dataflow_export",
@@ -265,6 +265,8 @@ This directory contains configuration files for AI agents working with Microsoft
    }
    ```
 
+> **Note:** The MCP server module (`fabric_dataflow_server`) is not yet implemented. The `fabric_dataflow_mcp.json` file serves as a design specification. Use the CLI scripts for actual operations.
+
 2. **Reference in conversations:**
    ```
    Use the fabric-dataflow-toolkit to analyze this export file.
@@ -331,6 +333,8 @@ All three files reference these official resources:
 - **pbi_helper**: Power BI helper utilities and Scanner API tools
 - **fabric_queries**: SQL queries and notebooks for Fabric workspaces
 
+(Internal projects — no public links available)
+
 ---
 
 ## Support and Contributions
@@ -355,7 +359,7 @@ When you develop new skills, patterns, or solutions:
 
 ## Version History
 
-- **Version 1.0** (2026-01-12): Initial release
+- **Version 1.0** (2026-01-09): Initial release
   - Created comprehensive instruction file from session learnings
   - Developed technical skills library with code examples
   - Built MCP configuration with tools, prompts, and knowledge base

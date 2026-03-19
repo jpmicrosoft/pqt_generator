@@ -184,7 +184,7 @@ python create_pqt_from_workspace.py "PIE_WORKSPACES_decoded" "output/pie_templat
 
 ### What It Does
 
-1. Identifies dataflow items (directories containing `mashup.pq`)
+1. Identifies dataflow items (directories named `item_XXX` containing `mashup.pq`)
 2. Works in-place by default (or copies to output directory if specified)
 3. Creates `pqtzip` directory with transformed files:
    - `MashupDocument.pq` (copy of `mashup.pq`)
@@ -336,52 +336,6 @@ python create_pqt_from_workspace.py "PIE_WORKSPACES"
 
 **Output:**
 
-### MashupMetadata.json
-Transforms `queryMetadata.json` from Fabric format to Power Query format:
-
-**Input (queryMetadata.json):**
-```json
-{
-  "queriesMetadata": {
-    "Query1": {"isHidden": false},
-    "Query2": {"isHidden": true}
-  }
-}
-```
-
-**Output (MashupMetadata.json):**
-```json
-{
-  "Version": "1.0.0.0",
-  "QueriesMetadata": [
-    {"Name": "Query1", "IsHidden": false},
-    {"Name": "Query2", "IsHidden": true}
-  ]
-}
-```
-
-### Metadata.json
-Extracts dataflow name from `.platform` file:
-
-```json
-{
-  "Name": "Finance_Monthly_Run",
-  "Description": "",
-  "Version": "1.0.0.0"
-}
-```
-
-### [Content_Types].xml
-Standard MIME type declarations for .pqt package:
-
-```xml
-<?xml version="1.0" encoding="utf-8"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-  <Default Extension="json" ContentType="application/json" />
-  <Default Extension="pq" ContentType="application/x-ms-m" />
-</Types>
-```
-
 ```
 ======================================================================
 Processing workspace: C:\Fabric\Exports\PIE_WORKSPACES
@@ -433,6 +387,56 @@ Dataflows location: C:\Fabric\Exports\PIE_WORKSPACES\with_dataflows
 ======================================================================
 ```
 
+#### File Format Details
+
+The .pqt conversion produces these files in the `pqtzip/` directory:
+
+#### MashupMetadata.json
+Transforms `queryMetadata.json` from Fabric format to Power Query format:
+
+**Input (queryMetadata.json):**
+```json
+{
+  "queriesMetadata": {
+    "Query1": {"isHidden": false},
+    "Query2": {"isHidden": true}
+  }
+}
+```
+
+**Output (MashupMetadata.json):**
+```json
+{
+  "Version": "1.0.0.0",
+  "QueriesMetadata": [
+    {"Name": "Query1", "IsHidden": false},
+    {"Name": "Query2", "IsHidden": true}
+  ]
+}
+```
+
+#### Metadata.json
+Extracts dataflow name from `.platform` file:
+
+```json
+{
+  "Name": "Finance_Monthly_Run",
+  "Description": "",
+  "Version": "1.0.0.0"
+}
+```
+
+#### [Content_Types].xml
+Standard MIME type declarations for .pqt package:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="json" ContentType="application/json" />
+  <Default Extension="pq" ContentType="application/x-ms-m" />
+</Types>
+```
+
 ### Step 4: Use the .pqt Files
 
 The `.pqt` files are now in `PIE_WORKSPACES\with_dataflows\item_XXX\item_XXX.pqt`
@@ -454,8 +458,10 @@ Import into Power BI Desktop:
 | `--all` | Run complete workflow (decode + convert) | `python process_dataflows.py --all "source"` |
 | `--decode` | Decode exports only | `python process_dataflows.py --decode "source"` |
 | `--convert` | Convert to .pqt only | `python process_dataflows.py --convert "source"` |
-| `--output <dir>` | Custom output directory | `python process_dataflows.py --all "source" --output "out"` |
+| `--output / -o <dir>` | Custom output directory | `python process_dataflows.py --all "source" --output "out"` |
 | `--help` | Show help message | `python process_dataflows.py --help` |
+
+> **Note:** `--output` only affects the convert step. When using `--all`, decoded files are always written to the source directory.
 
 ### Individual Scripts
 
@@ -474,8 +480,6 @@ python create_pqt_from_workspace.py <source_directory> <output_directory>
 ```
 
 ---
-
-## File Transformations
 
 ## Troubleshooting
 

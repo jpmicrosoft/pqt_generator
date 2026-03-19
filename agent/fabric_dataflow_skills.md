@@ -201,7 +201,7 @@ def create_mashup_metadata(query_metadata_path, output_path):
     
     # Initialize MashupMetadata structure
     mashup_metadata = {
-        "QueryGroups": [],
+        "Version": "1.0.0.0",
         "QueriesMetadata": []
     }
     
@@ -209,8 +209,8 @@ def create_mashup_metadata(query_metadata_path, output_path):
     if 'queriesMetadata' in metadata:
         for query_name, query_info in metadata['queriesMetadata'].items():
             mashup_metadata['QueriesMetadata'].append({
-                "QueryId": query_info.get('queryId', ''),
-                "QueryName": query_info.get('queryName', query_name)
+                "Name": query_name,
+                "IsHidden": query_info.get('isHidden', False)
             })
     
     # Write MashupMetadata.json
@@ -222,8 +222,8 @@ def create_mashup_metadata(query_metadata_path, output_path):
 
 **Key Points:**
 - QueriesMetadata is an array, not an object
-- Each entry needs QueryId and QueryName
-- QueryGroups is usually empty
+- Each entry needs Name and IsHidden fields
+- Version is always "1.0.0.0"
 
 ---
 
@@ -447,8 +447,8 @@ def generate_content_types_xml():
     
     content = '''<?xml version="1.0" encoding="utf-8"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-    <Default Extension="pq" ContentType="application/x-ms-m" />
     <Default Extension="json" ContentType="application/json" />
+    <Default Extension="pq" ContentType="application/x-ms-m" />
 </Types>'''
     
     return content
@@ -514,7 +514,7 @@ def validate_pqt_file(pqt_path):
         print(f"\n✅ QueriesMetadata: {query_count} queries")
         
         for query in metadata['QueriesMetadata']:
-            if 'QueryId' not in query or 'QueryName' not in query:
+            if 'Name' not in query:
                 print(f"❌ Invalid query metadata: {query}")
                 return False
         
@@ -801,11 +801,11 @@ shutil.copy(
 
 # Create MashupMetadata.json
 mashup_meta = {
-    "QueryGroups": [],
+    "Version": "1.0.0.0",
     "QueriesMetadata": [
         {
-            "QueryId": info['queryId'],
-            "QueryName": info['queryName']
+            "Name": name,
+            "IsHidden": info.get('isHidden', False)
         }
         for name, info in qm['queriesMetadata'].items()
     ]
@@ -819,7 +819,8 @@ with open(os.path.join(output_dir, '.platform'), 'r') as f:
     platform = json.load(f)
 
 metadata = {
-    "Name": platform['metadata']['displayName'],
+    "Name": platform.get('config', {}).get('displayName', 'Dataflow'),
+    "Description": "",
     "Version": "1.0.0.0"
 }
 
@@ -829,8 +830,8 @@ with open(os.path.join(pqtzip_dir, 'Metadata.json'), 'w') as f:
 # Create [Content_Types].xml
 xml_content = '''<?xml version="1.0" encoding="utf-8"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-    <Default Extension="pq" ContentType="application/x-ms-m" />
     <Default Extension="json" ContentType="application/json" />
+    <Default Extension="pq" ContentType="application/x-ms-m" />
 </Types>'''
 
 with open(os.path.join(pqtzip_dir, '[Content_Types].xml'), 'w') as f:
