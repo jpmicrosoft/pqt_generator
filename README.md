@@ -1,6 +1,8 @@
 # Power Query Template (.pqt) Generator
 
-This toolset automates the conversion of Microsoft Fabric Dataflow Gen2 exports into portable Power Query Template (.pqt) files.
+[![CI](https://github.com/jpmicrosoft/pqt_generator/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jpmicrosoft/pqt_generator/actions/workflows/ci.yml) ![Python 3.8–3.13](https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
+This toolset automatesthe conversion of Microsoft Fabric Dataflow Gen2 exports into portable Power Query Template (.pqt) files.
 
 ## Overview
 
