@@ -8,7 +8,7 @@ Usage:
     # Decode only
     python process_dataflows.py --decode <source_directory>
     
-    # Convert only (assumes already decoded)
+    # Convert only
     python process_dataflows.py --convert <source_directory>
     
     # Both decode and convert (complete workflow)
@@ -36,7 +36,6 @@ import argparse
 from pathlib import Path
 
 # Import functions from other scripts
-sys.path.insert(0, str(Path(__file__).parent))
 from batch_decode_dataflows import batch_decode_directory
 from create_pqt_from_workspace import process_workspace
 
@@ -101,11 +100,15 @@ Examples:
     # Track overall success
     overall_success = True
     
+    # Dynamic step numbering
+    step_num = 1
+    
     # Execute based on operation mode
     if args.decode or args.all:
         print("\n" + "="*70)
-        print("STEP 1: DECODING DATAFLOW EXPORTS")
+        print(f"STEP {step_num}: DECODING DATAFLOW EXPORTS")
         print("="*70)
+        step_num += 1
         
         decode_success = batch_decode_directory(str(source_path))
         
@@ -120,7 +123,7 @@ Examples:
     
     if args.convert or args.all:
         print("\n" + "="*70)
-        print("STEP 2: CONVERTING TO .PQT FILES")
+        print(f"STEP {step_num}: CONVERTING TO .PQT FILES")
         print("="*70)
         
         # Use the source directory for convert (it's now decoded)
