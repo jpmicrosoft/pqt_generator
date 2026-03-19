@@ -14,12 +14,15 @@ Example:
 import argparse
 import base64
 import json
+import logging
 import shutil
 import sys
 from pathlib import Path
 from typing import List
 
 from shared_utils import parse_ws_filename, format_mapping_line
+
+logger = logging.getLogger(__name__)
 
 # Maximum payload size to decode (100MB)
 MAX_PAYLOAD_SIZE = 100 * 1024 * 1024
@@ -52,9 +55,11 @@ def decode_dataflow_definition(input_file: Path, output_dir: Path) -> bool:
         payload = part.get('payload')
         payload_type = part.get('payloadType')
 
+        logger.debug(f"Processing part: {path}")
+
         # Guard against None/empty path values
         if not path:
-            print("   ⚠️ Skipping part with missing or empty path")
+            logger.warning("   ⚠️ Skipping part with missing or empty path")
             decoded_parts.append(part)
             continue
 
@@ -64,7 +69,7 @@ def decode_dataflow_definition(input_file: Path, output_dir: Path) -> bool:
         if payload_type == 'InlineBase64' and payload:
             # Check payload size before decoding
             if len(payload) > MAX_PAYLOAD_SIZE:
-                print(f"   ⚠️ Skipping {path}: payload exceeds {MAX_PAYLOAD_SIZE // (1024*1024)}MB limit")
+                logger.warning(f"   ⚠️ Skipping {path}: payload exceeds {MAX_PAYLOAD_SIZE // (1024*1024)}MB limit")
                 decoded_parts.append(part)
                 continue
 
@@ -76,7 +81,7 @@ def decode_dataflow_definition(input_file: Path, output_dir: Path) -> bool:
                 # Build and validate output path
                 output_file = output_dir / path
                 if not output_file.resolve().as_posix().startswith(resolved_output_dir.as_posix()):
-                    print(f"   ⚠️ Skipping {path}: resolved path escapes output directory")
+                    logger.warning(f"   ⚠️ Skipping {path}: resolved path escapes output directory")
                     decoded_parts.append(part)
                     continue
 
@@ -104,7 +109,7 @@ def decode_dataflow_definition(input_file: Path, output_dir: Path) -> bool:
                 })
 
             except Exception as e:
-                print(f"   ❌ Error decoding {path}: {e}")
+                logger.error(f"   ❌ Error decoding {path}: {e}")
                 decoded_parts.append(part)
         else:
             decoded_parts.append(part)
@@ -126,7 +131,7 @@ def decode_dataflow_definition(input_file: Path, output_dir: Path) -> bool:
 
     # Verify backup exists before we return (caller deletes original)
     if not moved_file.exists():
-        print(f"   ⚠️ Backup copy not found at {moved_file}")
+        logger.warning(f"   ⚠️ Backup copy not found at {moved_file}")
         return False
 
     return True
@@ -146,20 +151,20 @@ def batch_decode_directory(source_dir: str) -> bool:
     source_path = Path(source_dir)
 
     if not source_path.exists():
-        print(f"❌ Directory not found: {source_dir}")
+        logger.error(f"❌ Directory not found: {source_dir}")
         return False
 
     # Get all JSON files (sorted for deterministic numbering)
     json_files = sorted(source_path.glob("*.json"))
 
-    print(f"\n{'='*70}")
-    print("BATCH DECODING DATAFLOW DEFINITIONS")
-    print(f"{'='*70}")
-    print(f"Source Directory: {source_dir}")
-    print(f"Found {len(json_files)} JSON files\n")
+    logger.info(f"\n{'='*70}")
+    logger.info("BATCH DECODING DATAFLOW DEFINITIONS")
+    logger.info(f"{'='*70}")
+    logger.info(f"Source Directory: {source_dir}")
+    logger.info(f"Found {len(json_files)} JSON files\n")
 
     if not json_files:
-        print("❌ No JSON files found in the directory")
+        logger.error("❌ No JSON files found in the directory")
         return False
 
     success_count = 0
@@ -171,7 +176,7 @@ def batch_decode_directory(source_dir: str) -> bool:
         item_id = f"item_{idx:03d}"
         output_dir = source_path / item_id
 
-        print(f"[{idx}/{len(json_files)}] Processing: {json_file.name}")
+        logger.info(f"[{idx}/{len(json_files)}] Processing: {json_file.name}")
 
         try:
             # Decode the file
@@ -189,14 +194,14 @@ def batch_decode_directory(source_dir: str) -> bool:
             if moved_file.exists():
                 json_file.unlink()
             else:
-                print(f"   ⚠️ Backup not verified, keeping original: {json_file.name}")
+                logger.warning(f"   ⚠️ Backup not verified, keeping original: {json_file.name}")
 
-            print(f"   ✅ Decoded to: {output_dir}")
-            print(f"   ✅ Original file moved to subdirectory\n")
+            logger.info(f"   ✅ Decoded to: {output_dir}")
+            logger.info(f"   ✅ Original file moved to subdirectory\n")
             success_count += 1
 
         except Exception as e:
-            print(f"   ❌ Error: {e}\n")
+            logger.error(f"   ❌ Error: {e}\n")
             error_count += 1
 
     # Write all mapping lines at once (not append mode)
@@ -205,13 +210,13 @@ def batch_decode_directory(source_dir: str) -> bool:
         with open(mapping_file, 'w', encoding='utf-8') as f:
             f.writelines(mapping_lines)
 
-    print(f"\n{'='*70}")
-    print("BATCH DECODE COMPLETE")
-    print(f"{'='*70}")
-    print(f"✅ Successful: {success_count}")
-    print(f"❌ Failed: {error_count}")
-    print(f"\n💡 See 'item_mapping.txt' for file-to-folder mapping")
-    print(f"{'='*70}\n")
+    logger.info(f"\n{'='*70}")
+    logger.info("BATCH DECODE COMPLETE")
+    logger.info(f"{'='*70}")
+    logger.info(f"✅ Successful: {success_count}")
+    logger.info(f"❌ Failed: {error_count}")
+    logger.info(f"\n💡 See 'item_mapping.txt' for file-to-folder mapping")
+    logger.info(f"{'='*70}\n")
 
     return success_count > 0
 
@@ -234,6 +239,10 @@ Examples:
     )
 
     args = parser.parse_args()
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(message)s'
+    )
     success = batch_decode_directory(args.source_directory)
     sys.exit(0 if success else 1)
 

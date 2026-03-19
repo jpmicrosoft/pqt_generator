@@ -33,11 +33,14 @@ Examples:
 
 import sys
 import argparse
+import logging
 from pathlib import Path
 
 # Import functions from other scripts
 from batch_decode_dataflows import batch_decode_directory
 from create_pqt_from_workspace import process_workspace
+
+logger = logging.getLogger(__name__)
 
 
 def main():
@@ -88,13 +91,27 @@ Examples:
         help='Output directory for .pqt files (default: works in-place)'
     )
     
+    # Verbose flag
+    parser.add_argument(
+        '--verbose', '-v',
+        action='store_true',
+        help='Enable verbose/debug output'
+    )
+    
     # Parse arguments
     args = parser.parse_args()
+    
+    # Configure logging
+    log_level = logging.DEBUG if args.verbose else logging.INFO
+    logging.basicConfig(
+        level=log_level,
+        format='%(message)s'
+    )
     
     # Validate source directory exists
     source_path = Path(args.source_directory)
     if not source_path.exists():
-        print(f"❌ Error: Source directory does not exist: {args.source_directory}")
+        logger.error(f"❌ Error: Source directory does not exist: {args.source_directory}")
         sys.exit(1)
     
     # Track overall success
@@ -105,26 +122,26 @@ Examples:
     
     # Execute based on operation mode
     if args.decode or args.all:
-        print("\n" + "="*70)
-        print(f"STEP {step_num}: DECODING DATAFLOW EXPORTS")
-        print("="*70)
+        logger.info("\n" + "="*70)
+        logger.info(f"STEP {step_num}: DECODING DATAFLOW EXPORTS")
+        logger.info("="*70)
         step_num += 1
         
         decode_success = batch_decode_directory(str(source_path))
         
         if not decode_success:
-            print("\n❌ Decode step failed")
+            logger.error("\n❌ Decode step failed")
             overall_success = False
             
             # If running --all and decode failed, don't proceed to convert
             if args.all:
-                print("❌ Stopping workflow due to decode failure")
+                logger.error("❌ Stopping workflow due to decode failure")
                 sys.exit(1)
     
     if args.convert or args.all:
-        print("\n" + "="*70)
-        print(f"STEP {step_num}: CONVERTING TO .PQT FILES")
-        print("="*70)
+        logger.info("\n" + "="*70)
+        logger.info(f"STEP {step_num}: CONVERTING TO .PQT FILES")
+        logger.info("="*70)
         
         # Use the source directory for convert (it's now decoded)
         convert_source = str(source_path)
@@ -133,30 +150,30 @@ Examples:
         convert_success = process_workspace(convert_source, convert_output)
         
         if not convert_success:
-            print("\n❌ Convert step failed")
+            logger.error("\n❌ Convert step failed")
             overall_success = False
     
     # Final summary
-    print("\n" + "="*70)
-    print("WORKFLOW SUMMARY")
-    print("="*70)
+    logger.info("\n" + "="*70)
+    logger.info("WORKFLOW SUMMARY")
+    logger.info("="*70)
     
     if args.decode:
-        print("Operation: Decode only")
+        logger.info("Operation: Decode only")
     elif args.convert:
-        print("Operation: Convert only")
+        logger.info("Operation: Convert only")
     elif args.all:
-        print("Operation: Complete workflow (decode + convert)")
+        logger.info("Operation: Complete workflow (decode + convert)")
     
-    print(f"Source directory: {source_path}")
+    logger.info(f"Source directory: {source_path}")
     if args.output:
-        print(f"Output directory: {args.output}")
+        logger.info(f"Output directory: {args.output}")
     
     if overall_success:
-        print("\n✅ All operations completed successfully")
+        logger.info("\n✅ All operations completed successfully")
         sys.exit(0)
     else:
-        print("\n❌ Some operations failed")
+        logger.error("\n❌ Some operations failed")
         sys.exit(1)
 
 
